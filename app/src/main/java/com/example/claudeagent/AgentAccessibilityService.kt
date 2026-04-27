@@ -122,6 +122,21 @@ class AgentAccessibilityService : AccessibilityService(), ActionExecutor {
         }
     }
 
+    override fun listLaunchableApps(): List<AppInfo> {
+        val intent = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
+            addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+        }
+        return packageManager
+            .queryIntentActivities(intent, 0)
+            .map { ri ->
+                AppInfo(
+                    label = ri.loadLabel(packageManager).toString(),
+                    packageName = ri.activityInfo.packageName
+                )
+            }
+            .sortedBy { it.label.lowercase() }
+    }
+
     private fun openApp(packageName: String?): Boolean {
         if (packageName.isNullOrBlank()) return false
         val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return false

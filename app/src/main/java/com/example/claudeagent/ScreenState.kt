@@ -25,6 +25,9 @@ data class BoundsBox(val left: Int, val top: Int, val right: Int, val bottom: In
 }
 
 @Serializable
+data class AppInfo(val label: String, val packageName: String)
+
+@Serializable
 data class ScreenSnapshot(
     val packageName: String?,
     val elements: List<UiElement>,

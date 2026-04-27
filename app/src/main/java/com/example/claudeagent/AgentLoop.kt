@@ -24,6 +24,9 @@ class AgentLoop(
         onLog("▶ Задача: $task")
         history.append("Задача пользователя: $task\n\n")
 
+        val installedApps = executor.listLaunchableApps()
+            .joinToString("\n") { "  ${it.label} — ${it.packageName}" }
+
         for (step in 1..maxSteps) {
             onLog("─── Шаг $step ───")
 
@@ -38,6 +41,9 @@ class AgentLoop(
             val userMsg = buildString {
                 appendLine("Текущее приложение: ${snapshot.packageName ?: "unknown"}")
                 appendLine("Размер экрана: ${snapshot.screenWidth}x${snapshot.screenHeight}")
+                appendLine()
+                appendLine("Установленные приложения (для OPEN_APP используй packageName):")
+                appendLine(installedApps)
                 appendLine()
                 appendLine("История действий:")
                 appendLine(history.toString())
