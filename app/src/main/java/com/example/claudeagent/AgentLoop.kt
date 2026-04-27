@@ -24,12 +24,30 @@ class AgentLoop(
         onLog("▶ Задача: $task")
         history.append("Задача пользователя: $task\n\n")
 
-        val installedApps = executor.listLaunchableApps()
-            .joinToString("\n") { "  ${it.label} — ${it.packageName}" }
+        val apps = executor.listLaunchableApps()
+        val installedAppsContext = apps.joinToString("\n") { "  ${it.label} — ${it.packageName}" }
 
-        // Небольшая пауза чтобы экран успел переключиться после того
-        // как MainActivity ушла в фон через moveTaskToBack
+        // Небольшая пауза чтобы экран успел переключиться после moveTaskToBack
         delay(600)
+
+        // Быстрый pre-resolve: пытаемся определить нужное приложение по ключевым словам
+        // без LLM-вызова. Если не нашли — LLM разберётся сам через OPEN_APP в цикле.
+        val resolvedApp = resolveTargetApp(task, apps)
+        if (resolvedApp != null) {
+            onLog("📱 Приложение по запросу: ${resolvedApp.label} (${resolvedApp.packageName})")
+            executor.execute(
+                AgentDecision(
+                    thought = "pre-resolved app from task keywords",
+                    action = AgentActionType.OPEN_APP,
+                    packageName = resolvedApp.packageName
+                ),
+                executor.captureScreen()
+            )
+            history.append("До шагов: открыто приложение ${resolvedApp.label} напрямую.\n\n")
+            delay(1500)
+        } else {
+            onLog("🔍 Приложение не определено автоматически — агент подберёт сам")
+        }
 
         for (step in 1..maxSteps) {
             onLog("─── Шаг $step ───")
@@ -48,10 +66,11 @@ class AgentLoop(
                 delay(1000)
                 continue
             }
+
             val screenshot = executor.captureScreenshot()
             val elementsJson = json.encodeToString(
                 kotlinx.serialization.builtins.ListSerializer(UiElement.serializer()),
-                snapshot.elements.take(80) // ограничиваем чтобы не раздуть промпт
+                snapshot.elements.take(80)
             )
 
             val userMsg = buildString {
@@ -59,7 +78,7 @@ class AgentLoop(
                 appendLine("Размер экрана: ${snapshot.screenWidth}x${snapshot.screenHeight}")
                 appendLine()
                 appendLine("Установленные приложения (для OPEN_APP используй packageName):")
-                appendLine(installedApps)
+                appendLine(installedAppsContext)
                 appendLine()
                 appendLine("История действий:")
                 appendLine(history.toString())
@@ -85,9 +104,11 @@ class AgentLoop(
             }
 
             onLog("💭 ${decision.thought}")
-            onLog("➡ ${decision.action}${decision.targetElementId?.let { " #$it" } ?: ""}" +
+            onLog("➡ ${decision.action}" +
+                (decision.targetElementId?.let { " #$it" } ?: "") +
                 (decision.text?.let { " text=\"$it\"" } ?: "") +
-                (decision.direction?.let { " dir=$it" } ?: ""))
+                (decision.direction?.let { " dir=$it" } ?: "") +
+                (decision.packageName?.let { " pkg=$it" } ?: ""))
 
             history.append("Шаг $step: ${decision.action} — ${decision.thought}\n")
 
@@ -107,14 +128,42 @@ class AgentLoop(
         onLog("⛔ Превышен лимит шагов ($maxSteps)")
     }
 
+    /**
+     * Определяет нужное приложение по ключевым словам задачи без LLM-вызова.
+     * Каждое слово из задачи (≥3 символов) проверяется против label приложения:
+     * - прямое вхождение: "калькулятор" в "Калькулятор"
+     * - обратное: label "Maps" в слове "maps"
+     * - префикс ≥4 символа: "почт" из "почту" совпадёт с "Почта"
+     * Возвращает приложение с наибольшим количеством совпадений, или null.
+     */
+    private fun resolveTargetApp(task: String, apps: List<AppInfo>): AppInfo? {
+        val words = task.lowercase()
+            .split(Regex("[\\s,!?.;:]+"))
+            .filter { it.length >= 3 }
+        if (words.isEmpty()) return null
+
+        fun score(app: AppInfo): Int {
+            val label = app.label.lowercase()
+            return words.count { word ->
+                label.contains(word) ||
+                word.contains(label) ||
+                (word.length >= 4 && label.contains(word.take(4)))
+            }
+        }
+
+        return apps
+            .map { it to score(it) }
+            .filter { (_, s) -> s > 0 }
+            .maxByOrNull { (_, s) -> s }
+            ?.first
+    }
+
     private fun parseDecision(raw: String): AgentDecision? {
-        // Модели иногда оборачивают JSON в ```json ... ```
         val cleaned = raw
             .replace(Regex("```json\\s*"), "")
             .replace(Regex("```\\s*$"), "")
             .trim()
 
-        // Берём всё от первой { до последней }
         val start = cleaned.indexOf('{')
         val end = cleaned.lastIndexOf('}')
         if (start < 0 || end <= start) return null
@@ -154,7 +203,7 @@ class AgentLoop(
 - Используй только id из переданного списка элементов.
 - INPUT_TEXT работает по сфокусированному полю; если поле не сфокусировано — сначала TAP по нему.
 - SWIPE up прокручивает контент вверх (показывает то, что было ниже).
-- OPEN_APP запускает приложение напрямую по package name (например "com.android.calculator2"). Используй это вместо поиска иконки на экране.
+- OPEN_APP запускает приложение напрямую по package name из списка установленных приложений.
 - После OPEN_APP всегда делай WAIT, чтобы приложение успело открыться.
 - Если задача выполнена — верни DONE с finalAnswer.
 - Если застрял или цель невозможна — верни DONE с объяснением в finalAnswer.
