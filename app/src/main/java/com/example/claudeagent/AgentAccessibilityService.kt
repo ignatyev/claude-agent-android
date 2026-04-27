@@ -116,9 +116,18 @@ class AgentAccessibilityService : AccessibilityService(), ActionExecutor {
             AgentActionType.SWIPE -> swipe(decision.direction ?: "up", snapshot)
             AgentActionType.BACK -> performGlobalAction(GLOBAL_ACTION_BACK)
             AgentActionType.HOME -> performGlobalAction(GLOBAL_ACTION_HOME)
+            AgentActionType.OPEN_APP -> openApp(decision.packageName)
             AgentActionType.WAIT -> { delay(1000); true }
             AgentActionType.DONE -> true
         }
+    }
+
+    private fun openApp(packageName: String?): Boolean {
+        if (packageName.isNullOrBlank()) return false
+        val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+        return true
     }
 
     // ─────────── жесты ───────────

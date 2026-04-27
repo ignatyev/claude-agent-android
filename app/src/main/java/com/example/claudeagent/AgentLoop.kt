@@ -120,10 +120,11 @@ class AgentLoop(
 Отвечай СТРОГО в формате JSON, без пояснений до или после:
 {
   "thought": "краткое рассуждение, что ты видишь и почему выбираешь это действие",
-  "action": "TAP|LONG_TAP|INPUT_TEXT|SWIPE|BACK|HOME|WAIT|DONE",
+  "action": "TAP|LONG_TAP|INPUT_TEXT|SWIPE|BACK|HOME|OPEN_APP|WAIT|DONE",
   "targetElementId": <int, id элемента из списка, для TAP/LONG_TAP/INPUT_TEXT>,
   "text": "<строка для INPUT_TEXT>",
   "direction": "up|down|left|right (для SWIPE)",
+  "packageName": "<package name приложения, только для OPEN_APP>",
   "finalAnswer": "<строка, только если action=DONE>"
 }
 
@@ -131,6 +132,8 @@ class AgentLoop(
 - Используй только id из переданного списка элементов.
 - INPUT_TEXT работает по сфокусированному полю; если поле не сфокусировано — сначала TAP по нему.
 - SWIPE up прокручивает контент вверх (показывает то, что было ниже).
+- OPEN_APP запускает приложение напрямую по package name (например "com.android.calculator2"). Используй это вместо поиска иконки на экране.
+- После OPEN_APP всегда делай WAIT, чтобы приложение успело открыться.
 - Если задача выполнена — верни DONE с finalAnswer.
 - Если застрял или цель невозможна — верни DONE с объяснением в finalAnswer.
 - Думай пошагово, не пытайся выполнить всё сразу.

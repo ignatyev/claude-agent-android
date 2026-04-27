@@ -13,6 +13,7 @@ data class AgentDecision(
     val targetElementId: Int? = null,
     val text: String? = null,
     val direction: String? = null,
+    val packageName: String? = null,
     val finalAnswer: String? = null
 )
 
@@ -24,6 +25,7 @@ enum class AgentActionType {
     SWIPE,      // свайп: direction = "up"|"down"|"left"|"right"
     BACK,       // системная кнопка "назад"
     HOME,       // на домашний экран
+    OPEN_APP,   // запустить приложение по packageName
     WAIT,       // подождать секунду (после долгих переходов)
     DONE        // задача выполнена; finalAnswer — что сообщить пользователю
 }
