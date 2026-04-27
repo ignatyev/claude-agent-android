@@ -35,14 +35,7 @@ class AgentLoop(
         val resolvedApp = resolveTargetApp(task, apps)
         if (resolvedApp != null) {
             onLog("📱 Приложение по запросу: ${resolvedApp.label} (${resolvedApp.packageName})")
-            executor.execute(
-                AgentDecision(
-                    thought = "pre-resolved app from task keywords",
-                    action = AgentActionType.OPEN_APP,
-                    packageName = resolvedApp.packageName
-                ),
-                executor.captureScreen()
-            )
+            executor.launchApp(resolvedApp.packageName)
             history.append("До шагов: открыто приложение ${resolvedApp.label} напрямую.\n\n")
             delay(1500)
         } else {

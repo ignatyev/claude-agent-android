@@ -10,6 +10,9 @@ interface ActionExecutor {
     /** Список установленных приложений, которые можно запустить */
     fun listLaunchableApps(): List<AppInfo>
 
+    /** Запустить приложение напрямую по package name */
+    fun launchApp(packageName: String): Boolean
+
     /** Выполнить решение агента. Возвращает true при успехе. */
     suspend fun execute(decision: AgentDecision, snapshot: ScreenSnapshot): Boolean
 }

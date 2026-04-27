@@ -137,13 +137,15 @@ class AgentAccessibilityService : AccessibilityService(), ActionExecutor {
             .sortedBy { it.label.lowercase() }
     }
 
-    private fun openApp(packageName: String?): Boolean {
-        if (packageName.isNullOrBlank()) return false
+    override fun launchApp(packageName: String): Boolean {
         val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return false
         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
         return true
     }
+
+    private fun openApp(packageName: String?) =
+        if (packageName.isNullOrBlank()) false else launchApp(packageName)
 
     // ─────────── жесты ───────────
 
