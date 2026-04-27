@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Claude Agent</string>
+    <string name="accessibility_service_label">Claude Agent</string>
+    <string name="accessibility_service_description">Позволяет ИИ-агенту читать содержимое экрана и выполнять жесты для автоматизации задач, заданных пользователем.</string>
+</resources>
