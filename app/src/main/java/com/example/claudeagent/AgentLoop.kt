@@ -27,6 +27,13 @@ class AgentLoop(
         val installedApps = executor.listLaunchableApps()
             .joinToString("\n") { "  ${it.label} — ${it.packageName}" }
 
+        // Уходим с UI самого приложения, чтобы агент не взаимодействовал с самим собой
+        executor.execute(
+            AgentDecision(thought = "go home before starting", action = AgentActionType.HOME),
+            executor.captureScreen()
+        )
+        delay(1200)
+
         for (step in 1..maxSteps) {
             onLog("─── Шаг $step ───")
 
