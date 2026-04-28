@@ -13,9 +13,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.Job
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -49,6 +51,7 @@ fun AgentScreen() {
     var task by rememberSaveable { mutableStateOf("") }
     var logLines by remember { mutableStateOf(listOf<String>()) }
     var running by remember { mutableStateOf(false) }
+    var currentJob by remember { mutableStateOf<Job?>(null) }
     var settingsOpen by remember { mutableStateOf(false) }
     var modelMenuOpen by remember { mutableStateOf(false) }
 
@@ -121,46 +124,62 @@ fun AgentScreen() {
                 maxLines = 4
             )
 
-            // Запуск
-            Button(
-                onClick = {
-                    val service = AgentAccessibilityService.instance
-                    if (service == null) {
-                        logLines = logLines + "⚠ Включите Accessibility-службу"
-                        return@Button
-                    }
-                    if (apiKey.isBlank()) {
-                        logLines = logLines + "⚠ Не задан API-ключ OpenRouter (см. Настройки)"
-                        return@Button
-                    }
-                    running = true
-                    logLines = emptyList()
-                    // Уходим в фон, чтобы агент не видел собственный UI
-                    (ctx as? ComponentActivity)?.moveTaskToBack(true)
-                    scope.launch {
-                        val client = OpenRouterClient(apiKey, model)
-                        val loop = AgentLoop(
-                            client = client,
-                            executor = service,
-                            onLog = { line ->
-                                logLines = logLines + line
-                            }
-                        )
-                        try {
-                            loop.run(task.trim())
-                        } catch (e: Exception) {
-                            logLines = logLines + "⚠ Исключение: ${e.message}"
-                        } finally {
-                            running = false
+            // Запуск / Остановка
+            if (running) {
+                Button(
+                    onClick = {
+                        currentJob?.cancel()
+                        currentJob = null
+                        running = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Stop, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Остановить")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        val service = AgentAccessibilityService.instance
+                        if (service == null) {
+                            logLines = logLines + "⚠ Включите Accessibility-службу"
+                            return@Button
                         }
-                    }
-                },
-                enabled = !running && task.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (running) "Работаю…" else "Запустить агента")
+                        if (apiKey.isBlank()) {
+                            logLines = logLines + "⚠ Не задан API-ключ OpenRouter (см. Настройки)"
+                            return@Button
+                        }
+                        running = true
+                        logLines = emptyList()
+                        // Уходим в фон, чтобы агент не видел собственный UI
+                        (ctx as? ComponentActivity)?.moveTaskToBack(true)
+                        currentJob = scope.launch {
+                            val client = OpenRouterClient(apiKey, model)
+                            val loop = AgentLoop(
+                                client = client,
+                                executor = service,
+                                onLog = { line ->
+                                    logLines = logLines + line
+                                }
+                            )
+                            try {
+                                loop.run(task.trim())
+                            } catch (e: Exception) {
+                                logLines = logLines + "⚠ Исключение: ${e.message}"
+                            } finally {
+                                running = false
+                            }
+                        }
+                    },
+                    enabled = task.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Запустить агента")
+                }
             }
 
             // Лог

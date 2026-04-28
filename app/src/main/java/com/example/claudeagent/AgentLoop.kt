@@ -26,21 +26,11 @@ class AgentLoop(
 
         val apps = executor.listLaunchableApps()
         val installedAppsContext = apps.joinToString("\n") { "  ${it.label} — ${it.packageName}" }
+        onLog("📋 Установлено приложений: ${apps.size}")
+        onLog(apps.joinToString("  |  ") { it.label })
 
         // Небольшая пауза чтобы экран успел переключиться после moveTaskToBack
         delay(600)
-
-        // Быстрый pre-resolve: пытаемся определить нужное приложение по ключевым словам
-        // без LLM-вызова. Если не нашли — LLM разберётся сам через OPEN_APP в цикле.
-        val resolvedApp = resolveTargetApp(task, apps)
-        if (resolvedApp != null) {
-            onLog("📱 Приложение по запросу: ${resolvedApp.label} (${resolvedApp.packageName})")
-            executor.launchApp(resolvedApp.packageName)
-            history.append("До шагов: открыто приложение ${resolvedApp.label} напрямую.\n\n")
-            delay(1500)
-        } else {
-            onLog("🔍 Приложение не определено автоматически — агент подберёт сам")
-        }
 
         for (step in 1..maxSteps) {
             onLog("─── Шаг $step ───")
@@ -119,46 +109,6 @@ class AgentLoop(
         }
 
         onLog("⛔ Превышен лимит шагов ($maxSteps)")
-    }
-
-    /**
-     * Определяет нужное приложение по ключевым словам задачи без LLM-вызова.
-     * Каждое слово из задачи (≥3 символов) проверяется против label приложения:
-     * - прямое вхождение: "калькулятор" в "Калькулятор"
-     * - обратное: label "Maps" в слове "maps"
-     * - префикс ≥4 символа: "почт" из "почту" совпадёт с "Почта"
-     * Возвращает приложение с наибольшим количеством совпадений, или null.
-     */
-    private fun resolveTargetApp(task: String, apps: List<AppInfo>): AppInfo? {
-        val words = task.lowercase(java.util.Locale.getDefault())
-            .split(Regex("[\\s,!?.;:]+"))
-            .filter { it.length >= 3 }
-        if (words.isEmpty()) return null
-
-        fun matches(word: String, label: String): Boolean {
-            // прямое/обратное вхождение
-            if (label.contains(word) || word.contains(label)) return true
-            // префикс ≥4 символа (для падежей: "почту"→"почт" совпадёт с "почта")
-            if (word.length >= 4 && label.contains(word.take(4))) return true
-            // слово из задачи совпадает с любым словом в составном названии приложения
-            // например "калькулятор" найдёт "Mi Calculator" через перевод не поможет,
-            // но "calculator" найдёт "Mi Calculator"
-            return label.split(" ").any { part ->
-                part.length >= 3 && (part.contains(word) || word.contains(part) ||
-                    (word.length >= 4 && part.startsWith(word.take(4))))
-            }
-        }
-
-        fun score(app: AppInfo): Int {
-            val label = app.label.lowercase(java.util.Locale.getDefault())
-            return words.count { word -> matches(word, label) }
-        }
-
-        return apps
-            .map { it to score(it) }
-            .filter { (_, s) -> s > 0 }
-            .maxByOrNull { (_, s) -> s }
-            ?.first
     }
 
     private fun parseDecision(raw: String): AgentDecision? {
