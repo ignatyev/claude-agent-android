@@ -90,6 +90,21 @@ class OpenRouterClient(private val apiKey: String, private val model: String) {
         http.newCall(req).execute().use { resp ->
             val raw = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
+                if (resp.code == 429) {
+                    val resetMs = resp.header("X-RateLimit-Reset")?.toLongOrNull()
+                        ?: runCatching {
+                            json.parseToJsonElement(raw).jsonObject["error"]
+                                ?.jsonObject?.get("metadata")
+                                ?.jsonObject?.get("headers")
+                                ?.jsonObject?.get("X-RateLimit-Reset")
+                                ?.jsonPrimitive?.content?.toLong()
+                        }.getOrNull()
+                    val resetStr = resetMs?.let {
+                        java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale.getDefault())
+                            .format(java.util.Date(it))
+                    } ?: "неизвестно"
+                    throw RuntimeException("Лимит бесплатных запросов исчерпан. Сброс: $resetStr")
+                }
                 throw RuntimeException("OpenRouter ${resp.code}: $raw")
             }
             val parsed = json.parseToJsonElement(raw).jsonObject
