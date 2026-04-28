@@ -36,7 +36,7 @@ class AgentLoop(
             val screenshot = executor.captureScreenshot()
             val elementsJson = json.encodeToString(
                 kotlinx.serialization.builtins.ListSerializer(UiElement.serializer()),
-                snapshot.elements.take(80)
+                snapshot.elements.take(35)
             )
 
             val userMsg = buildString {
@@ -66,8 +66,9 @@ class AgentLoop(
 
             val decision = parseDecision(raw)
             if (decision == null) {
-                onLog("⚠ Не удалось распарсить ответ модели:\n$raw")
-                return@withContext
+                onLog("⚠ Не удалось распарсить ответ модели — пропускаю шаг")
+                delay(800)
+                continue
             }
 
             onLog("💭 ${decision.thought}")
@@ -97,6 +98,7 @@ class AgentLoop(
 
     private fun parseDecision(raw: String): AgentDecision? {
         val cleaned = raw
+            .replace(Regex("<think>[\\s\\S]*?</think>", RegexOption.IGNORE_CASE), "")
             .replace(Regex("```json\\s*"), "")
             .replace(Regex("```\\s*$"), "")
             .trim()
