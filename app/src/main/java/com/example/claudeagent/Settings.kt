@@ -13,17 +13,17 @@ object Settings {
     private val KEY_API = stringPreferencesKey("openrouter_api_key")
     private val KEY_MODEL = stringPreferencesKey("model_id")
 
-    const val DEFAULT_MODEL = "anthropic/claude-sonnet-4.5"
+    const val DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free"
 
     val PRESET_MODELS = listOf(
-        "anthropic/claude-sonnet-4.5",
-        "anthropic/claude-opus-4.1",
-        "openai/gpt-4o",
-        "openai/gpt-4o-mini",
-        "google/gemini-2.5-pro",
-        "google/gemini-2.5-flash",
-        "meta-llama/llama-3.3-70b-instruct",
-        "deepseek/deepseek-chat"
+        "google/gemini-2.0-flash-exp:free",
+        "google/gemini-2.5-pro-exp-03-25:free",
+        "deepseek/deepseek-r1:free",
+        "deepseek/deepseek-chat-v3-0324:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "qwen/qwq-32b:free",
+        "mistralai/mistral-small-3.1-24b-instruct:free",
+        "microsoft/phi-4-multimodal-instruct:free"
     )
 
     fun apiKey(ctx: Context): Flow<String> =
