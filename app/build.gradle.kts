@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.claudeagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = (System.getenv("BUILD_NUMBER") ?: "1").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
     }
 
     buildTypes {
