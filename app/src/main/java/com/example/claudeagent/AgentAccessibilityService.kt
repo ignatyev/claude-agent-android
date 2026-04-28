@@ -82,7 +82,7 @@ class AgentAccessibilityService : AccessibilityService(), ActionExecutor {
                                     true
                                 )
                             } else bmp
-                            scaled?.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, out)
+                            scaled?.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, out)
                             screenshot.hardwareBuffer.close()
                             deferred.complete(out.toByteArray())
                         } catch (e: Exception) {

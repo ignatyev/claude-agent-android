@@ -29,9 +29,6 @@ class AgentLoop(
         onLog("📋 Установлено приложений: ${apps.size}")
         onLog(apps.joinToString("  |  ") { it.label })
 
-        // Небольшая пауза чтобы экран успел переключиться после moveTaskToBack
-        delay(600)
-
         for (step in 1..maxSteps) {
             onLog("─── Шаг $step ───")
 
@@ -73,6 +70,7 @@ class AgentLoop(
             }
 
             // 2. РАССУЖДЕНИЕ
+            onLog("📡 Запрос к API…")
             val raw = try {
                 client.chat(SYSTEM_PROMPT, userMsg, screenshot)
             } catch (e: Exception) {

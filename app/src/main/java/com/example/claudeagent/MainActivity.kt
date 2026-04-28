@@ -153,8 +153,6 @@ fun AgentScreen() {
                         }
                         running = true
                         logLines = emptyList()
-                        // Уходим в фон, чтобы агент не видел собственный UI
-                        (ctx as? ComponentActivity)?.moveTaskToBack(true)
                         currentJob = scope.launch {
                             val client = OpenRouterClient(apiKey, model)
                             val loop = AgentLoop(
