@@ -35,18 +35,6 @@ class AgentLoop(
             // 1. ВОСПРИЯТИЕ
             val snapshot = executor.captureScreen()
 
-            // Защита от самовзаимодействия: если агент видит собственный UI —
-            // уходим на рабочий стол и повторяем шаг с чистым экраном
-            if (snapshot.packageName == "com.example.claudeagent") {
-                onLog("↩ Агент на собственном экране — уходим на рабочий стол")
-                executor.execute(
-                    AgentDecision(thought = "escape own UI", action = AgentActionType.HOME),
-                    snapshot
-                )
-                delay(1000)
-                continue
-            }
-
             val screenshot = executor.captureScreenshot()
             val elementsJson = json.encodeToString(
                 kotlinx.serialization.builtins.ListSerializer(UiElement.serializer()),
