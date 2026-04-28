@@ -128,14 +128,14 @@ class AgentLoop(
             httpSearch.newCall(req).execute().use { resp ->
                 val body = resp.body?.string().orEmpty()
                 val obj = json.parseToJsonElement(body).jsonObject
-                val abstract = obj["AbstractText"]?.jsonPrimitive?.content.orEmpty()
+                val abstractText = obj["AbstractText"]?.jsonPrimitive?.content.orEmpty()
                 val answer = obj["Answer"]?.jsonPrimitive?.content.orEmpty()
                 val topics = obj["RelatedTopics"]?.jsonArray
                     ?.take(3)
                     ?.mapNotNull { it.jsonObject["Text"]?.jsonPrimitive?.content }
                     ?.joinToString(" | ")
                     .orEmpty()
-                val result = listOf(answer, abstract, topics).firstOrNull { it.isNotBlank() }
+                val result = listOf(answer, abstractText, topics).firstOrNull { it.isNotBlank() }
                     ?: "Нет результатов"
                 result.take(500)
             }
