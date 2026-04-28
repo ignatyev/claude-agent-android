@@ -118,6 +118,7 @@ class AgentAccessibilityService : AccessibilityService(), ActionExecutor {
             AgentActionType.HOME -> performGlobalAction(GLOBAL_ACTION_HOME)
             AgentActionType.OPEN_APP -> openApp(decision.packageName)
             AgentActionType.WAIT -> { delay(1000); true }
+            AgentActionType.WEB_SEARCH -> true
             AgentActionType.DONE -> true
         }
     }
