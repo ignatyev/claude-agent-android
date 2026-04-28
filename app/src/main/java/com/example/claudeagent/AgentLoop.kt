@@ -5,6 +5,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 
 /**
  * Основной цикл агента. Не запускается напрямую — используется AccessibilityService'ом,
@@ -86,6 +93,16 @@ class AgentLoop(
                 return@withContext
             }
 
+            if (decision.action == AgentActionType.WEB_SEARCH) {
+                val q = decision.query ?: task
+                onLog("🔍 Поиск: $q")
+                val result = webSearch(q)
+                onLog("📄 $result")
+                history.append("Шаг $step: WEB_SEARCH «$q» → $result\n")
+                delay(300)
+                continue
+            }
+
             val ok = executor.execute(decision, snapshot)
             if (!ok) onLog("⚠ Действие не удалось выполнить")
 
@@ -94,6 +111,37 @@ class AgentLoop(
         }
 
         onLog("⛔ Превышен лимит шагов ($maxSteps)")
+    }
+
+    private val httpSearch = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    private suspend fun webSearch(query: String): String = withContext(Dispatchers.IO) {
+        val q = URLEncoder.encode(query, "UTF-8")
+        val req = Request.Builder()
+            .url("https://api.duckduckgo.com/?q=$q&format=json&no_html=1&skip_disambig=1")
+            .addHeader("User-Agent", "ClaudeAgent/1.0")
+            .build()
+        try {
+            httpSearch.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                val obj = json.parseToJsonElement(body).jsonObject
+                val abstract = obj["AbstractText"]?.jsonPrimitive?.content.orEmpty()
+                val answer = obj["Answer"]?.jsonPrimitive?.content.orEmpty()
+                val topics = obj["RelatedTopics"]?.jsonArray
+                    ?.take(3)
+                    ?.mapNotNull { it.jsonObject["Text"]?.jsonPrimitive?.content }
+                    ?.joinToString(" | ")
+                    .orEmpty()
+                val result = listOf(answer, abstract, topics).firstOrNull { it.isNotBlank() }
+                    ?: "Нет результатов"
+                result.take(500)
+            }
+        } catch (e: Exception) {
+            "Ошибка поиска: ${e.message}"
+        }
     }
 
     private fun parseDecision(raw: String): AgentDecision? {
@@ -137,6 +185,7 @@ class AgentLoop(
   "text": "<строка для INPUT_TEXT>",
   "direction": "up|down|left|right (для SWIPE)",
   "packageName": "<package name, только для OPEN_APP>",
+  "query": "<поисковый запрос, только для WEB_SEARCH>",
   "finalAnswer": "<строка, только если action=DONE>"
 }
 
@@ -144,7 +193,7 @@ class AgentLoop(
 - Используй только id из переданного списка элементов.
 - INPUT_TEXT работает по сфокусированному полю; если не сфокусировано — сначала TAP по нему.
 - SWIPE up прокручивает контент вверх (показывает то, что было ниже).
-- Если для задачи нет подходящего приложения — открой Chrome (com.android.chrome) и выполни поиск в Google.
+- Если для задачи нет подходящего приложения — используй WEB_SEARCH с полем query. Результат появится в истории следующего шага — используй его чтобы ответить DONE.
 - Если текущее приложение com.example.claudeagent — это интерфейс самого агента. Не взаимодействуй с его элементами. Сразу вызови OPEN_APP для нужного приложения или HOME чтобы уйти на рабочий стол.
 - OPEN_APP запускает приложение НАПРЯМУЮ по packageName из списка — без поиска иконки на экране.
 - ЗАПРЕЩЕНО листать рабочий стол в поисках иконки. Для запуска приложения — только OPEN_APP.

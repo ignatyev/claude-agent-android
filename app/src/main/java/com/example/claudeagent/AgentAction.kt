@@ -14,6 +14,7 @@ data class AgentDecision(
     val text: String? = null,
     val direction: String? = null,
     val packageName: String? = null,
+    val query: String? = null,
     val finalAnswer: String? = null
 )
 
@@ -27,5 +28,6 @@ enum class AgentActionType {
     HOME,       // на домашний экран
     OPEN_APP,   // запустить приложение по packageName
     WAIT,       // подождать секунду (после долгих переходов)
+    WEB_SEARCH, // поиск через DuckDuckGo API; query — поисковый запрос
     DONE        // задача выполнена; finalAnswer — что сообщить пользователю
 }
