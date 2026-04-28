@@ -130,18 +130,28 @@ class AgentLoop(
      * Возвращает приложение с наибольшим количеством совпадений, или null.
      */
     private fun resolveTargetApp(task: String, apps: List<AppInfo>): AppInfo? {
-        val words = task.lowercase()
+        val words = task.lowercase(java.util.Locale.getDefault())
             .split(Regex("[\\s,!?.;:]+"))
             .filter { it.length >= 3 }
         if (words.isEmpty()) return null
 
-        fun score(app: AppInfo): Int {
-            val label = app.label.lowercase()
-            return words.count { word ->
-                label.contains(word) ||
-                word.contains(label) ||
-                (word.length >= 4 && label.contains(word.take(4)))
+        fun matches(word: String, label: String): Boolean {
+            // прямое/обратное вхождение
+            if (label.contains(word) || word.contains(label)) return true
+            // префикс ≥4 символа (для падежей: "почту"→"почт" совпадёт с "почта")
+            if (word.length >= 4 && label.contains(word.take(4))) return true
+            // слово из задачи совпадает с любым словом в составном названии приложения
+            // например "калькулятор" найдёт "Mi Calculator" через перевод не поможет,
+            // но "calculator" найдёт "Mi Calculator"
+            return label.split(" ").any { part ->
+                part.length >= 3 && (part.contains(word) || word.contains(part) ||
+                    (word.length >= 4 && part.startsWith(word.take(4))))
             }
+        }
+
+        fun score(app: AppInfo): Int {
+            val label = app.label.lowercase(java.util.Locale.getDefault())
+            return words.count { word -> matches(word, label) }
         }
 
         return apps
@@ -196,7 +206,8 @@ class AgentLoop(
 - Используй только id из переданного списка элементов.
 - INPUT_TEXT работает по сфокусированному полю; если поле не сфокусировано — сначала TAP по нему.
 - SWIPE up прокручивает контент вверх (показывает то, что было ниже).
-- OPEN_APP запускает приложение напрямую по package name из списка установленных приложений.
+- OPEN_APP запускает приложение НАПРЯМУЮ по packageName из списка установленных приложений — без поиска иконки на экране.
+- ЗАПРЕЩЕНО листать рабочий стол в поисках иконки приложения. Если нужно открыть приложение — используй OPEN_APP.
 - После OPEN_APP всегда делай WAIT, чтобы приложение успело открыться.
 - Если задача выполнена — верни DONE с finalAnswer.
 - Если застрял или цель невозможна — верни DONE с объяснением в finalAnswer.
